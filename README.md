@@ -4,14 +4,14 @@ Modern WordPress user synchronization plugin using REST API and webhooks.
 
 ## Features
 
-✅ **Real-time Sync** - Automatic user synchronization via webhooks
-✅ **REST API Based** - Modern REST API endpoints for communication
-✅ **Encrypted Transfer** - Optional AES-256 encryption for sensitive data
-✅ **Role Sync** - Synchronize user roles across sites
-✅ **Meta Sync** - Sync user meta data (WooCommerce billing/shipping)
-✅ **Bi-directional** - Any site can send and receive user data
-✅ **Health Check** - Test connections to remote sites
-✅ **Secure** - API key authentication for all requests
+- **Real-time Sync** - Automatic user synchronization via webhooks
+- **REST API Based** - Modern REST API endpoints for communication
+- **Encrypted Transfer** - Optional AES-256 encryption for sensitive data
+- **Role Sync** - Synchronize user roles across sites
+- **Meta Sync** - Sync user meta data (WooCommerce billing/shipping)
+- **Bi-directional** - Any site can send and receive user data
+- **Health Check** - Test connections to remote sites
+- **Secure** - API key authentication for all requests
 
 ## Installation
 
