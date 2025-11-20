@@ -149,15 +149,11 @@ class CUS_Webhook {
 
 	/**
 	 * Build endpoint URL, detecting index.php in permalink structure
+	 * Uses heuristic: Plesk preview domains usually need /index.php/
 	 */
 	private function build_endpoint_url( $base_url, $endpoint_type ) {
-		// Try to detect if remote site uses /index.php/ in URLs
-		// First try without index.php
-		$test_url = $base_url . '/wp-json/';
-		$response = wp_remote_head( $test_url, array( 'timeout' => 5, 'redirection' => 0 ) );
-		
-		// If we get 404, try with index.php prefix
-		if ( is_wp_error( $response ) || wp_remote_retrieve_response_code( $response ) === 404 ) {
+		// Plesk preview domains (e.g., *.plesk.page) typically use /index.php/ in permalinks
+		if ( strpos( $base_url, '.plesk.page' ) !== false ) {
 			$prefix = '/index.php/wp-json';
 		} else {
 			$prefix = '/wp-json';
