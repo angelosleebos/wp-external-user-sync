@@ -148,7 +148,9 @@ class CUS_Webhook {
 	}
 
 	private function send_request( $url, $api_key, $data ) {
-		$endpoint = trailingslashit( $url ) . 'wp-json/custom-user-sync/v1/user';
+		// Handle subdirectory installations correctly
+		$url = untrailingslashit( $url );
+		$endpoint = $url . '/wp-json/custom-user-sync/v1/user';
 		$body = wp_json_encode( $data );
 
 		$headers = array(
@@ -222,7 +224,8 @@ class CUS_Webhook {
 				continue;
 			}
 
-			$endpoint = trailingslashit( $site['url'] ) . 'wp-json/custom-user-sync/v1/health';
+			$url = untrailingslashit( $site['url'] );
+			$endpoint = $url . '/wp-json/custom-user-sync/v1/health';
 
 			$response = wp_remote_get( $endpoint, array(
 				'headers' => array(

@@ -54,25 +54,54 @@ class CUS_Settings {
 				?>
 				
 				<table class="form-table">
-					<tr>
-						<th scope="row">
-							<label for="remote_sites"><?php _e( 'Remote Sites', 'custom-user-sync' ); ?></label>
-						</th>
-						<td>
-							<textarea 
-								id="remote_sites" 
-								name="<?php echo esc_attr( $this->option_name ); ?>[remote_sites]" 
-								rows="10" 
-								class="large-text code"
-								placeholder='[{"url":"https://example.com","api_key":"your-api-key"}]'
-							><?php echo esc_textarea( wp_json_encode( $settings['remote_sites'] ?? [], JSON_PRETTY_PRINT ) ); ?></textarea>
-							<p class="description">
-								<?php _e( 'JSON array of remote sites to sync with. Each site needs url and api_key.', 'custom-user-sync' ); ?>
-							</p>
-						</td>
-					</tr>
-					
-					<tr>
+				<tr>
+					<th scope="row">
+						<label><?php _e( 'Remote Sites', 'custom-user-sync' ); ?></label>
+					</th>
+					<td>
+						<div id="remote-sites-container">
+							<?php
+							$remote_sites = $settings['remote_sites'] ?? array();
+							if ( empty( $remote_sites ) ) {
+								$remote_sites = array( array( 'url' => '', 'api_key' => '' ) );
+							}
+							foreach ( $remote_sites as $index => $site ) :
+							?>
+							<div class="remote-site-row" style="margin-bottom: 15px; padding: 15px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px;">
+								<div style="margin-bottom: 10px;">
+									<label style="display: inline-block; width: 100px; font-weight: 600;"><?php _e( 'Site URL:', 'custom-user-sync' ); ?></label>
+									<input 
+										type="url" 
+										name="<?php echo esc_attr( $this->option_name ); ?>[remote_sites][<?php echo $index; ?>][url]" 
+										value="<?php echo esc_attr( $site['url'] ?? '' ); ?>" 
+										class="regular-text"
+										placeholder="https://example.com"
+										style="width: 400px;"
+									/>
+								</div>
+								<div style="margin-bottom: 10px;">
+									<label style="display: inline-block; width: 100px; font-weight: 600;"><?php _e( 'API Key:', 'custom-user-sync' ); ?></label>
+									<input 
+										type="text" 
+										name="<?php echo esc_attr( $this->option_name ); ?>[remote_sites][<?php echo $index; ?>][api_key]" 
+										value="<?php echo esc_attr( $site['api_key'] ?? '' ); ?>" 
+										class="regular-text"
+										placeholder="Remote site's API key"
+										style="width: 400px;"
+									/>
+								</div>
+								<?php if ( $index > 0 ) : ?>
+									<button type="button" class="button remove-site" style="color: #a00;"><?php _e( 'Remove', 'custom-user-sync' ); ?></button>
+								<?php endif; ?>
+							</div>
+							<?php endforeach; ?>
+						</div>
+						<button type="button" class="button" id="add-remote-site"><?php _e( '+ Add Another Site', 'custom-user-sync' ); ?></button>
+						<p class="description">
+							<?php _e( 'Add remote WordPress sites to sync users with. Use their API key from their settings page.', 'custom-user-sync' ); ?>
+						</p>
+					</td>
+				</tr>					<tr>
 						<th scope="row">
 							<label for="api_key"><?php _e( 'API Key (This Site)', 'custom-user-sync' ); ?></label>
 						</th>
@@ -242,6 +271,31 @@ class CUS_Settings {
 		
 		<script>
 		jQuery(document).ready(function($) {
+			let siteIndex = <?php echo count( $remote_sites ); ?>;
+			
+			// Add new remote site
+			$('#add-remote-site').on('click', function() {
+				const html = '<div class="remote-site-row" style="margin-bottom: 15px; padding: 15px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px;">' +
+					'<div style="margin-bottom: 10px;">' +
+					'<label style="display: inline-block; width: 100px; font-weight: 600;">Site URL:</label>' +
+					'<input type="url" name="<?php echo esc_js( $this->option_name ); ?>[remote_sites][' + siteIndex + '][url]" class="regular-text" placeholder="https://example.com" style="width: 400px;" />' +
+					'</div>' +
+					'<div style="margin-bottom: 10px;">' +
+					'<label style="display: inline-block; width: 100px; font-weight: 600;">API Key:</label>' +
+					'<input type="text" name="<?php echo esc_js( $this->option_name ); ?>[remote_sites][' + siteIndex + '][api_key]" class="regular-text" placeholder="Remote site\'s API key" style="width: 400px;" />' +
+					'</div>' +
+					'<button type="button" class="button remove-site" style="color: #a00;">Remove</button>' +
+					'</div>';
+				$('#remote-sites-container').append(html);
+				siteIndex++;
+			});
+			
+			// Remove remote site
+			$(document).on('click', '.remove-site', function() {
+				$(this).closest('.remote-site-row').remove();
+			});
+			
+			// Test connections
 			$('#test-connection').on('click', function() {
 				const button = $(this);
 				button.prop('disabled', true).text('Testing...');
@@ -254,8 +308,8 @@ class CUS_Settings {
 					if (response.success) {
 						let html = '<div style="background: #fff; border: 1px solid #ccc; padding: 10px; margin-top: 10px;">';
 						response.data.forEach(function(result) {
-							const status = result.success ? '✅' : '❌';
-							html += '<p>' + status + ' ' + result.url + ': ' + result.message + '</p>';
+							const icon = result.success ? '<span style="color: green;">✓</span>' : '<span style="color: red;">✗</span>';
+							html += '<p>' + icon + ' <strong>' + result.url + '</strong>: ' + result.message + '</p>';
 						});
 						html += '</div>';
 						$('#test-results').html(html);
@@ -285,11 +339,18 @@ class CUS_Settings {
 
 		$settings = get_option( $this->option_name, array() );
 
-		// Parse remote_sites if it's a JSON string
-		if ( isset( $settings['remote_sites'] ) && is_string( $settings['remote_sites'] ) ) {
-			$settings['remote_sites'] = json_decode( $settings['remote_sites'], true );
-			if ( json_last_error() !== JSON_ERROR_NONE ) {
-				$settings['remote_sites'] = array();
+		// Parse remote_sites - can be JSON string or already array
+		if ( isset( $settings['remote_sites'] ) ) {
+			if ( is_string( $settings['remote_sites'] ) ) {
+				$settings['remote_sites'] = json_decode( $settings['remote_sites'], true );
+				if ( json_last_error() !== JSON_ERROR_NONE ) {
+					$settings['remote_sites'] = array();
+				}
+			} elseif ( is_array( $settings['remote_sites'] ) ) {
+				// Filter out empty sites
+				$settings['remote_sites'] = array_values( array_filter( $settings['remote_sites'], function( $site ) {
+					return ! empty( $site['url'] ) && ! empty( $site['api_key'] );
+				} ) );
 			}
 		}
 
