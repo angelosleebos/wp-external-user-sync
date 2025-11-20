@@ -172,6 +172,13 @@ class CUS_API {
 	public static function receive_user( $request ) {
 		$data = $request->get_json_params();
 
+		// PREVENT CIRCULAR WEBHOOKS: Remove webhook hooks before processing
+		$webhook = CUS_Webhook::instance();
+		remove_action( 'user_register', array( $webhook, 'on_user_created' ), 10 );
+		remove_action( 'profile_update', array( $webhook, 'on_user_updated' ), 10 );
+		remove_action( 'delete_user', array( $webhook, 'on_user_deleted' ), 10 );
+		remove_action( 'set_user_role', array( $webhook, 'on_role_changed' ), 10 );
+
 		// Decrypt data FIRST if encryption key is set
 		$settings = CUS_Settings::instance();
 		if ( ! empty( $settings->get( 'encryption_key' ) ) && ! empty( $data['encrypted'] ) ) {
@@ -291,6 +298,12 @@ class CUS_API {
 					array( 'status' => 400 )
 				);
 		}
+
+		// Re-add webhook hooks after processing
+		add_action( 'user_register', array( $webhook, 'on_user_created' ), 10, 1 );
+		add_action( 'profile_update', array( $webhook, 'on_user_updated' ), 10, 2 );
+		add_action( 'delete_user', array( $webhook, 'on_user_deleted' ), 10, 1 );
+		add_action( 'set_user_role', array( $webhook, 'on_role_changed' ), 10, 3 );
 
 		return new WP_REST_Response( $response, 200 );
 	}

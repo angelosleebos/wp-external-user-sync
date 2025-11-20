@@ -27,6 +27,7 @@ require_once CUS_PLUGIN_DIR . 'includes/class-cus-api.php';
 require_once CUS_PLUGIN_DIR . 'includes/class-cus-webhook.php';
 require_once CUS_PLUGIN_DIR . 'includes/class-cus-sync.php';
 require_once CUS_PLUGIN_DIR . 'includes/class-cus-encryption.php';
+require_once CUS_PLUGIN_DIR . 'includes/class-cus-bulk-sync.php';
 
 /**
  * Main plugin class
@@ -56,6 +57,7 @@ class Custom_User_Sync {
 		CUS_Settings::instance();
 		CUS_Webhook::instance();
 		CUS_Sync::instance();
+		CUS_Bulk_Sync::instance();
 	}
 }
 

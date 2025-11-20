@@ -262,6 +262,27 @@ class CUS_Settings {
 				<code><?php echo esc_html( rest_url( 'custom-user-sync/v1' ) ); ?></code>
 			</p>
 			
+			<h2><?php _e( 'Bulk Sync Users', 'custom-user-sync' ); ?></h2>
+			<p><?php _e( 'Synchronize all existing users to remote sites. This will send all users in batches.', 'custom-user-sync' ); ?></p>
+			<button type="button" class="button button-primary" id="bulk-sync-start">
+				<?php _e( 'Start Bulk Sync', 'custom-user-sync' ); ?>
+			</button>
+			<button type="button" class="button" id="bulk-sync-stop" style="display: none;">
+				<?php _e( 'Stop', 'custom-user-sync' ); ?>
+			</button>
+			<div id="bulk-sync-progress" style="margin-top: 15px; display: none;">
+				<div style="background: #f0f0f0; border: 1px solid #ccc; border-radius: 4px; height: 30px; position: relative; overflow: hidden;">
+					<div id="bulk-sync-progress-bar" style="background: #0073aa; height: 100%; width: 0%; transition: width 0.3s;"></div>
+					<div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; font-weight: 600; color: #333;">
+						<span id="bulk-sync-progress-text">0%</span>
+					</div>
+				</div>
+				<p id="bulk-sync-status" style="margin-top: 10px;"></p>
+				<div id="bulk-sync-errors" style="color: red; margin-top: 10px;"></div>
+			</div>
+			
+			<hr style="margin: 30px 0;">
+			
 			<h2><?php _e( 'Test Connection', 'custom-user-sync' ); ?></h2>
 			<button type="button" class="button" id="test-connection">
 				<?php _e( 'Test Remote Connections', 'custom-user-sync' ); ?>
@@ -294,6 +315,92 @@ class CUS_Settings {
 			$(document).on('click', '.remove-site', function() {
 				$(this).closest('.remote-site-row').remove();
 			});
+			
+			// Bulk sync functionality
+			let bulkSyncRunning = false;
+			let bulkSyncOffset = 0;
+			let bulkSyncTotal = 0;
+			
+			$('#bulk-sync-start').on('click', function() {
+				if (!confirm('<?php _e( 'Start synchronizing all users to remote sites? This may take a while.', 'custom-user-sync' ); ?>')) {
+					return;
+				}
+				
+				bulkSyncRunning = true;
+				bulkSyncOffset = 0;
+				$('#bulk-sync-start').hide();
+				$('#bulk-sync-stop').show();
+				$('#bulk-sync-progress').show();
+				$('#bulk-sync-errors').html('');
+				
+				// Get total users first
+				$.post(ajaxurl, {
+					action: 'cus_bulk_sync_status',
+					nonce: '<?php echo wp_create_nonce( 'cus_bulk_sync' ); ?>'
+				}, function(response) {
+					if (response.success) {
+						bulkSyncTotal = response.data.total_users;
+						processBulkSyncBatch();
+					}
+				});
+			});
+			
+			$('#bulk-sync-stop').on('click', function() {
+				bulkSyncRunning = false;
+				$('#bulk-sync-start').show();
+				$('#bulk-sync-stop').hide();
+				$('#bulk-sync-status').html('<?php _e( 'Stopped by user', 'custom-user-sync' ); ?>');
+			});
+			
+			function processBulkSyncBatch() {
+				if (!bulkSyncRunning) return;
+				
+				$.post(ajaxurl, {
+					action: 'cus_bulk_sync',
+					nonce: '<?php echo wp_create_nonce( 'cus_bulk_sync' ); ?>',
+					batch_size: 10,
+					offset: bulkSyncOffset
+				}, function(response) {
+					if (!response.success) {
+						$('#bulk-sync-status').html('<span style="color: red;">Error: ' + response.data + '</span>');
+						bulkSyncRunning = false;
+						$('#bulk-sync-start').show();
+						$('#bulk-sync-stop').hide();
+						return;
+					}
+					
+					const data = response.data;
+					bulkSyncOffset = data.total;
+					
+					const percent = bulkSyncTotal > 0 ? Math.round((bulkSyncOffset / bulkSyncTotal) * 100) : 0;
+					$('#bulk-sync-progress-bar').css('width', percent + '%');
+					$('#bulk-sync-progress-text').text(percent + '%');
+					$('#bulk-sync-status').html(data.message + ' (' + bulkSyncOffset + ' / ' + bulkSyncTotal + ')');
+					
+					if (data.errors && data.errors.length > 0) {
+						let errorHtml = '<strong>Errors:</strong><br>';
+						data.errors.forEach(function(error) {
+							errorHtml += error + '<br>';
+						});
+						$('#bulk-sync-errors').append(errorHtml);
+					}
+					
+					if (data.completed) {
+						bulkSyncRunning = false;
+						$('#bulk-sync-start').show();
+						$('#bulk-sync-stop').hide();
+						$('#bulk-sync-status').html('<span style="color: green; font-weight: bold;">✓ ' + data.message + '</span>');
+					} else {
+						// Process next batch with 1500ms delay to avoid rate limiting
+						setTimeout(processBulkSyncBatch, 1500);
+					}
+				}).fail(function() {
+					$('#bulk-sync-status').html('<span style="color: red;">Connection error</span>');
+					bulkSyncRunning = false;
+					$('#bulk-sync-start').show();
+					$('#bulk-sync-stop').hide();
+				});
+			}
 			
 			// Test connections
 			$('#test-connection').on('click', function() {
