@@ -172,27 +172,28 @@ class CUS_API {
 	public static function receive_user( $request ) {
 		$data = $request->get_json_params();
 
-		if ( empty( $data['user_login'] ) || empty( $data['user_email'] ) ) {
-			return new WP_Error(
-				'invalid_data',
-				__( 'user_login and user_email are required', 'custom-user-sync' ),
-				array( 'status' => 400 )
-			);
-		}
-
-		// Decrypt data if encryption key is set
+		// Decrypt data FIRST if encryption key is set
 		$settings = CUS_Settings::instance();
 		if ( ! empty( $settings->get( 'encryption_key' ) ) && ! empty( $data['encrypted'] ) ) {
 			$encryption = new CUS_Encryption( $settings->get( 'encryption_key' ) );
-			$data = $encryption->decrypt( $data['encrypted'] );
-			if ( ! $data ) {
+			$decrypted = $encryption->decrypt( $data['encrypted'] );
+			if ( ! $decrypted ) {
 				return new WP_Error(
 					'decryption_failed',
 					__( 'Failed to decrypt data', 'custom-user-sync' ),
 					array( 'status' => 400 )
 				);
 			}
-			$data = json_decode( $data, true );
+			$data = json_decode( $decrypted, true );
+		}
+
+		// Now validate the (decrypted) data
+		if ( empty( $data['user_login'] ) || empty( $data['user_email'] ) ) {
+			return new WP_Error(
+				'invalid_data',
+				__( 'user_login and user_email are required', 'custom-user-sync' ),
+				array( 'status' => 400 )
+			);
 		}
 
 		$action = $data['action'] ?? 'update';
