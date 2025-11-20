@@ -1,0 +1,78 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Get version
+        id: get_version
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+          else
+            VERSION="dev-$(date +%Y%m%d-%H%M%S)"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+      
+      - name: Create distribution
+        run: |
+          mkdir -p dist
+          
+          # Copy plugin files (excluding dev files)
+          rsync -av --exclude='.git*' \
+                    --exclude='node_modules' \
+                    --exclude='.github' \
+                    --exclude='dist' \
+                    --exclude='*.md' \
+                    --exclude='.DS_Store' \
+                    ./ dist/custom-user-sync/
+          
+          # Create ZIP
+          cd dist
+          zip -r custom-user-sync-${{ steps.get_version.outputs.version }}.zip custom-user-sync/
+          
+          # Also create a generic "latest" version
+          cp custom-user-sync-${{ steps.get_version.outputs.version }}.zip custom-user-sync-latest.zip
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: custom-user-sync-${{ steps.get_version.outputs.version }}
+          path: dist/*.zip
+          retention-days: 90
+      
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/*.zip
+          body: |
+            ## Custom User Sync Plugin
+            
+            ### Features
+            - Real-time user synchronization via webhooks
+            - Bulk sync for existing users
+            - Encryption support
+            - API key authentication
+            - Rate limiting protection
+            - Support for Plesk preview domains
+            
+            ### Installation
+            1. Download `custom-user-sync-latest.zip`
+            2. Upload to WordPress plugins directory
+            3. Activate the plugin
+            4. Configure settings under Settings → Custom User Sync
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
