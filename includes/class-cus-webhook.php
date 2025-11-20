@@ -147,10 +147,29 @@ class CUS_Webhook {
 		}
 	}
 
+	/**
+	 * Build endpoint URL, detecting index.php in permalink structure
+	 */
+	private function build_endpoint_url( $base_url, $endpoint_type ) {
+		// Try to detect if remote site uses /index.php/ in URLs
+		// First try without index.php
+		$test_url = $base_url . '/wp-json/';
+		$response = wp_remote_head( $test_url, array( 'timeout' => 5, 'redirection' => 0 ) );
+		
+		// If we get 404, try with index.php prefix
+		if ( is_wp_error( $response ) || wp_remote_retrieve_response_code( $response ) === 404 ) {
+			$prefix = '/index.php/wp-json';
+		} else {
+			$prefix = '/wp-json';
+		}
+		
+		return $base_url . $prefix . '/custom-user-sync/v1/' . $endpoint_type;
+	}
+
 	private function send_request( $url, $api_key, $data ) {
 		// Handle subdirectory installations correctly
 		$url = untrailingslashit( $url );
-		$endpoint = $url . '/wp-json/custom-user-sync/v1/user';
+		$endpoint = $this->build_endpoint_url( $url, 'user' );
 		$body = wp_json_encode( $data );
 
 		$headers = array(
@@ -225,7 +244,7 @@ class CUS_Webhook {
 			}
 
 			$url = untrailingslashit( $site['url'] );
-			$endpoint = $url . '/wp-json/custom-user-sync/v1/health';
+			$endpoint = $this->build_endpoint_url( $url, 'health' );
 
 			$response = wp_remote_get( $endpoint, array(
 				'headers' => array(
