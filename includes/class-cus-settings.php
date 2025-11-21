@@ -391,8 +391,8 @@ class CUS_Settings {
 						$('#bulk-sync-stop').hide();
 						$('#bulk-sync-status').html('<span style="color: green; font-weight: bold;">✓ ' + data.message + '</span>');
 					} else {
-						// Process next batch with 1500ms delay to avoid rate limiting
-						setTimeout(processBulkSyncBatch, 1500);
+						// Process next batch with 500ms delay for optimal performance
+						setTimeout(processBulkSyncBatch, 500);
 					}
 				}).fail(function() {
 					$('#bulk-sync-status').html('<span style="color: red;">Connection error</span>');

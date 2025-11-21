@@ -33,7 +33,7 @@ class CUS_Bulk_Sync {
 			wp_send_json_error( 'Insufficient permissions' );
 		}
 
-		$batch_size = isset( $_POST['batch_size'] ) ? intval( $_POST['batch_size'] ) : 10;
+		$batch_size = isset( $_POST['batch_size'] ) ? intval( $_POST['batch_size'] ) : 50;
 		$offset = isset( $_POST['offset'] ) ? intval( $_POST['offset'] ) : 0;
 
 		$result = $this->sync_users_batch( $batch_size, $offset );
@@ -200,7 +200,7 @@ class CUS_Bulk_Sync {
 			$body_data = $user_data;
 
 			$response = wp_remote_post( $url, array(
-				'timeout' => 30,
+				'timeout' => 15,
 				'headers' => array(
 					'Content-Type' => 'application/json',
 					'X-API-Key' => $site['api_key'],
